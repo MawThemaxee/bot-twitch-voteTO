@@ -105,7 +105,7 @@ class CommandHandler {
     this.context.client.timeout(
       targetUser,
       banDuration,
-      `Le vote pour l'interdiction a réussi (${voteResult.votes} votes)`
+      `${this.context.config.banReason} (${voteResult.votes} votes)`
     );
 
     const banMsg = `Le chat a voté pour interdire ${targetUser} pendant ${this.context.config.banDurationMinutes} minutes !`;

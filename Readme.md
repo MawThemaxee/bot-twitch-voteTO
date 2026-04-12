@@ -53,3 +53,19 @@ Un bot Twitch qui permet aux utilisateurs de voter pour des interdictions tempor
 - `nodemon` : Un utilitaire qui redémarre automatiquement l'application Node quand des changements de fichiers sont détectés
 - `ws` : Une bibliothèque WebSocket pour se connecter au server IRC de Twitch.
 - `dotenv` : Un module sans dépendances qui charge les variables d'environnement d'un fichier .env dans process.env.
+
+## Configuration
+
+Vous pouvez configurer le bot en modifiant les variables dans votre fichier `.env` :
+
+| Variable | Description | Défaut |
+|----------|-------------|--------|
+| `TWITCH_CHANNEL` | Nom du canal Twitch | - (requis) |
+| `TWITCH_BOT_USERNAME` | Nom d'utilisateur du bot | - (requis) |
+| `TWITCH_OAUTH_TOKEN` | Token OAuth du bot | - (requis) |
+| `TWITCH_CLIENT_ID` | Client ID Twitch | - (requis pour API Helix) |
+| `BAN_DURATION_MINUTES` | Durée du timeout en minutes | `5` |
+| `BAN_REASON` | Raison du timeout affichée dans Twitch | `Vote pour interdiction` |
+| `VOTE_THRESHOLD` | Nombre de votes nécessaires pour exécuter le ban | `3` |
+| `VOTE_DURATION_SECONDS` | Durée du vote en secondes | `60` |
+| `DEBUG` | Activer le mode débogage (true/false) | `false` |

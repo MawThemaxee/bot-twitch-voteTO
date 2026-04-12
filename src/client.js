@@ -284,7 +284,7 @@ class TwitchClient {
       const postData = JSON.stringify({
         data: {
           user_id: userId,
-          reason: reason || `Interdit par le bot`
+          reason: reason || this.config.banReason || 'Interdit par le bot'
         }
       });
 
@@ -354,7 +354,7 @@ class TwitchClient {
         data: {
           user_id: userId,
           duration: duration,
-          reason: reason || `Timeout du vote par le bot`
+          reason: reason || this.config.banReason || 'Timeout du vote par le bot'
         }
       });
 

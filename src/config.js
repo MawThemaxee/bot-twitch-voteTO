@@ -17,6 +17,7 @@ const config = {
   // Configuration du vote
   voteThreshold: parseInt(process.env.VOTE_THRESHOLD || '3', 10),
   banDurationMinutes: parseInt(process.env.BAN_DURATION_MINUTES || '5', 10),
+  banReason: process.env.BAN_REASON || 'Vote pour interdiction',
   voteDurationSeconds: parseInt(process.env.VOTE_DURATION_SECONDS || '60', 10),
 
   // Mode débogage
