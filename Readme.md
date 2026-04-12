@@ -34,5 +34,5 @@ Un bot Twitch qui permet aux utilisateurs de voter pour des interdictions tempor
 ## Dépendances
 
 - `nodemon` : Un utilitaire qui redémarre automatiquement l'application Node quand des changements de fichiers sont détectés
-- `ws` : Une bibliothèque WebSocket pour Node.js pour gérer la communication en temps réel avec le chat Twitch.
+- `tmi.js` : Une bibliothèque pour interagir avec l'API de Twitch, permettant de créer des bots de chat Twitch.
 - `dotenv` : Un module sans dépendances qui charge les variables d'environnement d'un fichier .env dans process.env.
