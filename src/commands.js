@@ -75,7 +75,7 @@ class CommandHandler {
     const result = this.context.voteManager.startVote(targetUser, username);
 
     if (!result.success) {
-      return `Impossible de démarrer le vote pour ${targetUser}.`;
+      return result.error || `Impossible de démarrer le vote pour ${targetUser}.`;
     }
 
     return `Vote démarré pour interdire ${targetUser} ! (${result.duration}s) Tapez !yes pour voter pour l'interdiction (besoin de ${this.context.config.voteThreshold} votes).`;
@@ -87,7 +87,7 @@ class CommandHandler {
    */
   handleYes(username, args, userstate) {
     if (!this.context.voteManager.hasActiveVote()) {
-      return 'Aucun vote actif.';
+      return;
     }
 
     const result = this.context.voteManager.addVote(username);
@@ -122,7 +122,7 @@ class CommandHandler {
    */
   handleNo(username, args, userstate) {
     if (!this.context.voteManager.hasActiveVote()) {
-      return 'Aucun vote actif.';
+      return;
     }
 
     // Pour l'instant, !no reconnaît simplement la commande

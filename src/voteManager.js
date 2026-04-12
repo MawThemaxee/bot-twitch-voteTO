@@ -18,14 +18,17 @@ class VoteManager {
    * Démarrer un nouveau vote pour interdire un utilisateur
    * @param {string} targetUser - Nom d'utilisateur sur lequel voter
    * @param {string} initiator - Nom d'utilisateur qui a démarré le vote
-   * @returns {boolean} - True si le vote a démarré, false si un vote est déjà actif
+   * @returns {Object} - { success: boolean, duration?: number, error?: string }
    */
   startVote(targetUser, initiator) {
     if (this.activeVote) {
       logger.warn(
         `Un vote est déjà actif pour ${this.activeVote.target}, impossible de démarrer un nouveau vote`
       );
-      return false;
+      return { 
+        success: false, 
+        error: `Un vote est déjà actif pour ${this.activeVote.target}` 
+      };
     }
 
     const durationMs = this.voteDurationSeconds * 1000;
