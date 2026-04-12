@@ -4,12 +4,14 @@
  */
 
 const WebSocket = require('ws');
+const https = require('https');
 const logger = require('./logger');
 const { config } = require('./config');
 
 class TwitchClient {
   constructor(options = {}) {
-    this.config = { ...config, ...options };
+    // Stocker une référence au config (pas une copie) pour que les mises à jour ultérieures soient visibles
+    this.config = options || config;
     this.ws = null;
     this.connected = false;
     this.messageHandlers = [];
@@ -257,7 +259,7 @@ class TwitchClient {
   }
 
   /**
-   * Interdire un utilisateur
+   * Interdire un utilisateur via l'API Helix
    */
   async ban(username, reason = '') {
     if (!this.connected) {
@@ -265,17 +267,68 @@ class TwitchClient {
       return;
     }
 
+    if (!this.config.broadcasterId || !this.config.moderatorId || !this.config.clientId) {
+      logger.error('Configuration manquante pour l\'API Helix (broadcasterId, moderatorId, clientId)');
+      return;
+    }
+
     try {
-      const msg = reason ? `/ban ${username} ${reason}` : `/ban ${username}`;
-      this.sendIRC(`PRIVMSG #${this.config.channel} :${msg}`);
-      logger.info(`${username} est interdit : ${reason}`);
+      // D'abord, obtenir l'ID de l'utilisateur
+      const userId = await this.getUserId(username);
+      if (!userId) {
+        logger.error(`Impossible de trouver l'ID utilisateur pour ${username}`);
+        return;
+      }
+
+      // Puis interdire l'utilisateur
+      const postData = JSON.stringify({
+        data: {
+          user_id: userId,
+          reason: reason || `Interdit par le bot`
+        }
+      });
+
+      const options = {
+        hostname: 'api.twitch.tv',
+        path: `/helix/moderation/bans?broadcaster_id=${this.config.broadcasterId}&moderator_id=${this.config.moderatorId}`,
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.config.oauthToken.replace('oauth:', '')}`,
+          'Client-ID': this.config.clientId,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            logger.info(`${username} a été interdit : ${reason}`);
+          } else {
+            logger.error(`Erreur interdiction ${username}: ${res.statusCode} - ${data}`);
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        logger.error(`Erreur lors de l'interdiction de ${username}`, error);
+      });
+
+      req.write(postData);
+      req.end();
     } catch (error) {
       logger.error(`Erreur lors de l'interdiction de ${username}`, error);
     }
   }
 
   /**
-   * Mettre en délai d'attente un utilisateur
+   * Mettre en délai d'attente un utilisateur via l'API Helix
    */
   async timeout(username, duration, reason = '') {
     if (!this.connected) {
@@ -283,15 +336,117 @@ class TwitchClient {
       return;
     }
 
+    if (!this.config.broadcasterId || !this.config.moderatorId || !this.config.clientId) {
+      logger.error('Configuration manquante pour l\'API Helix (broadcasterId, moderatorId, clientId)');
+      return;
+    }
+
     try {
-      const msg = reason 
-        ? `/timeout ${username} ${duration} ${reason}` 
-        : `/timeout ${username} ${duration}`;
-      this.sendIRC(`PRIVMSG #${this.config.channel} :${msg}`);
-      logger.info(`${username} a un délai d'expiration de ${duration}s : ${reason}`);
+      // D'abord, obtenir l'ID de l'utilisateur
+      const userId = await this.getUserId(username);
+      if (!userId) {
+        logger.error(`Impossible de trouver l'ID utilisateur pour ${username}`);
+        return;
+      }
+
+      // Puis faire le timeout
+      const postData = JSON.stringify({
+        data: {
+          user_id: userId,
+          duration: duration,
+          reason: reason || `Timeout du vote par le bot`
+        }
+      });
+
+      const options = {
+        hostname: 'api.twitch.tv',
+        path: `/helix/moderation/bans?broadcaster_id=${this.config.broadcasterId}&moderator_id=${this.config.moderatorId}`,
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.config.oauthToken.replace('oauth:', '')}`,
+          'Client-ID': this.config.clientId,
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            logger.info(`${username} a un délai d'expiration de ${duration}s : ${reason}`);
+          } else {
+            logger.error(`Erreur timeout ${username}: ${res.statusCode} - ${data}`);
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        logger.error(`Erreur lors de la mise en délai de ${username}`, error);
+      });
+
+      req.write(postData);
+      req.end();
     } catch (error) {
       logger.error(`Erreur lors de la mise en délai de ${username}`, error);
     }
+  }
+
+  /**
+   * Obtenir l'ID d'un utilisateur via l'API Helix
+   */
+  async getUserId(username) {
+    return new Promise((resolve) => {
+      if (!this.config.clientId) {
+        logger.error('Client ID manquant');
+        resolve(null);
+        return;
+      }
+
+      const options = {
+        hostname: 'api.twitch.tv',
+        path: `/helix/users?login=${username}`,
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${this.config.oauthToken.replace('oauth:', '')}`,
+          'Client-ID': this.config.clientId,
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            const response = JSON.parse(data);
+            if (response.data && response.data.length > 0) {
+              resolve(response.data[0].id);
+            } else {
+              resolve(null);
+            }
+          } catch (error) {
+            logger.error('Erreur parsing getUserId', error);
+            resolve(null);
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        logger.error('Erreur getUserId', error);
+        resolve(null);
+      });
+
+      req.end();
+    });
   }
 
   /**

@@ -8,6 +8,7 @@ const CommandHandler = require('./src/commands');
 const VoteManager = require('./src/voteManager');
 const logger = require('./src/logger');
 const { config, validateConfig } = require('./src/config');
+const idFetcher = require('./src/idFetcher');
 
 class TwitchVoteBotError extends Error {
   constructor(message) {
@@ -47,6 +48,19 @@ class TwitchVoteBot {
   async start() {
     try {
       logger.info('Démarrage du bot...');
+
+      // Récupérer automatiquement les IDs si nécessaire
+      logger.info('Vérification de la configuration des IDs...');
+      const ids = await idFetcher.initializeIds(this.config);
+      
+      if (ids.broadcasterId && ids.moderatorId) {
+        // Mettre à jour la config avec les IDs récupérés
+        this.config.broadcasterId = ids.broadcasterId;
+        this.config.moderatorId = ids.moderatorId;
+        logger.info(`✓ IDs configurés - Broadcaster: ${ids.broadcasterId}, Moderator: ${ids.moderatorId}`);
+      } else {
+        logger.warn('⚠ IDs non disponibles - Certaines fonctionnalités peuvent ne pas fonctionner');
+      }
 
       // Se connecter à Twitch
       await this.client.connect();

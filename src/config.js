@@ -10,6 +10,9 @@ const config = {
   channel: process.env.TWITCH_CHANNEL || 'testchannel',
   botUsername: process.env.TWITCH_BOT_USERNAME || 'testbot',
   oauthToken: process.env.TWITCH_OAUTH_TOKEN || 'oauth:test',
+  clientId: process.env.TWITCH_CLIENT_ID || '',
+  broadcasterId: process.env.TWITCH_BROADCASTER_ID || '',
+  moderatorId: process.env.TWITCH_MODERATOR_ID || '',
 
   // Configuration du vote
   voteThreshold: parseInt(process.env.VOTE_THRESHOLD || '3', 10),

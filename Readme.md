@@ -22,20 +22,34 @@ Un bot Twitch qui permet aux utilisateurs de voter pour des interdictions tempor
    npm install
    ````
 1. Créez un fichier `.env` à la racine du projet et ajoutez les variables d'environnement nécessaires (voir le fichier `.env.example` pour référence).
-2. creez un compte Twitch pour votre bot et obtenez un OAuth Token pour ce compte. Vous pouvez utiliser des outils en ligne comme [Twitch Token Generator](https://twitchtokengenerator.com/) pour générer un token avec les scopes nécessaires (généralement `chat:edit` et `chat:read`).
-3. Déployer le OAuth Token pour votre bot Twitch en utilisant le script `setup-oauth-simple.js` :
-   ```bash
-   npm run setup
-   ```
+
+2. **Configuration API Helix (Facile !)** :
+      
+   Vous n'avez besoin que de :
+   - **TWITCH_CLIENT_ID** : Obtenez-le de la [Twitch Developer Console](https://dev.twitch.tv/console/apps) ou sur [Twitch Token Generator](https://twitchtokengenerator.com/).
+
+   - **TWITCH_BROADCASTER_ID** : Par défaut, le bot récupère automatiquement l'ID du diffuseur (broadcaster) à partir du nom de la chaîne configuré dans `TWITCH_CHANNEL`. Vous n'avez pas besoin de le fournir manuellement.
+
+   - **TWITCH_MODERATOR_ID** : Par défaut, le bot récupère automatiquement l'ID du modérateur à partir du nom d'utilisateur du bot configuré dans `TWITCH_BOT_USERNAME`. Vous n'avez pas besoin de le fournir manuellement.
+   
+   Les autres IDs sont récupérés automatiquement et mis en cache pour les prochains démarrages..
+
+3. Créez un compte Twitch pour votre bot et obtenez un OAuth Token pour ce compte. Vous pouvez utiliser des outils en ligne comme [Twitch Token Generator](https://twitchtokengenerator.com/) pour générer un token avec les scopes nécessaires.
+   
+   **Scopes requis** : `chat:read`, `chat:edit`, `channel:moderate`
+
 4. Démarrez le bot en mode développement (avec redémarrage automatique) :
    ```bash
    npm run dev
    ```
+   
+   Au premier démarrage, le bot va récupérer et mettre en cache vos IDs automatiquement ! 🚀
+
 5. Dans le chat de votre chaîne Twitch, utilisez la commande `!votban @nom_d'utilisateur` pour initier un vote pour interdire temporairement un utilisateur. Les autres utilisateurs peuvent voter avec `!yes` ou `!no`.
 6. Utilisez `!votestatus` pour afficher l'état actuel du vote.
 
 ## Dépendances
 - `nodejs` : Un environnement d'exécution JavaScript côté serveur version 14 ou supérieure.
 - `nodemon` : Un utilitaire qui redémarre automatiquement l'application Node quand des changements de fichiers sont détectés
-- `tmi.js` : Une bibliothèque pour interagir avec l'API de Twitch, permettant de créer des bots de chat Twitch.
+- `ws` : Une bibliothèque WebSocket pour se connecter au server IRC de Twitch.
 - `dotenv` : Un module sans dépendances qui charge les variables d'environnement d'un fichier .env dans process.env.

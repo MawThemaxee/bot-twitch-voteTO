@@ -3,6 +3,9 @@
 .env.local
 .env.*.local
 
+# Cache des IDs
+.ids.json
+
 # GitHub instructions
 .github/copilot-instructions.md
 .github/docs/
