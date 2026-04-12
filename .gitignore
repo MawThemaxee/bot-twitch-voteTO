@@ -5,7 +5,7 @@
 
 # GitHub instructions
 .github/copilot-instructions.md
-
+.github/docs/
 
 # Dependencies
 node_modules/
