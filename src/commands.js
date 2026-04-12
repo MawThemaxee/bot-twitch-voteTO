@@ -1,6 +1,6 @@
 /**
- * Command handler for chat commands
- * Parses and dispatches commands like !votban, !yes, !no, !votestatus
+ * Gestionnaire de commandes pour les commandes de chat
+ * Analyse et distribue les commandes comme !votban, !yes, !no, !votestatus
  */
 
 const logger = require('./logger');
@@ -12,8 +12,8 @@ class CommandHandler {
   }
 
   /**
-   * Setup available commands
-   * @returns {Object} - Command handlers map
+   * Configurer les commandes disponibles
+   * @returns {Object} - Carte des gestionnaires de commandes
    */
   setupCommands() {
     return {
@@ -21,176 +21,148 @@ class CommandHandler {
       '!yes': this.handleYes.bind(this),
       '!no': this.handleNo.bind(this),
       '!votestatus': this.handleVoteStatus.bind(this),
-      '!cancelVote': this.handleCancelVote.bind(this),
-      '!help': this.handleHelp.bind(this),
+      '!cancelvote': this.handleCancelVote.bind(this),
     };
   }
 
   /**
-   * Parse and execute command
-   * @param {string} username - User executing command
-   * @param {string} text - Chat message
-   * @returns {string|null} - Response to send to chat
+   * Analyser et exécuter la commande
+   * @param {string} username - Utilisateur exécutant la commande
+   * @param {string} text - Message de chat
+   * @param {Object} userstate - État de l'utilisateur avec badges, etc.
+   * @returns {string|null} - Réponse à envoyer au chat
    */
-  parse(username, text) {
-    // Extract command and arguments
+  parse(username, text, userstate) {
+    // Extraire la commande et les arguments
     const parts = text.split(' ');
     const command = parts[0].toLowerCase();
     const args = parts.slice(1);
 
     if (!this.commands[command]) {
-      return null; // Not a recognized command
+      return null; // Commande non reconnue
     }
 
-    logger.debug(`Command: ${command} from ${username}`, args);
+    logger.debug(`Commande : ${command} de ${username}`, args);
 
     try {
-      return this.commands[command](username, args);
+      return this.commands[command](username, args, userstate);
     } catch (error) {
-      logger.error(`Error executing command ${command}`, error);
-      return 'An error occurred executing that command.';
+      logger.error(`Erreur lors de l'exécution de la commande ${command}`, error);
+      return 'Une erreur est survenue lors de l\'exécution de cette commande.';
     }
   }
 
   /**
-   * Handle !votban <username> command
-   * Initiates a vote to ban a user
+   * Gérer la commande !votban <nom d'utilisateur>
+   * Initie un vote pour interdire un utilisateur
    */
-  handleVotban(username, args) {
-    // Check if user is a moderator (simplified check)
-    const isMod = this.isModerator(username);
-    if (!isMod) {
-      return 'Only moderators can initiate votes.';
-    }
-
+  handleVotban(username, args, userstate) {
     if (args.length === 0) {
-      return 'Usage: !votban @username';
+      return 'Utilisation : !votban @nom_d\'utilisateur';
     }
 
     const targetUser = args[0].replace('@', '').toLowerCase();
 
     if (targetUser === username.toLowerCase()) {
-      return 'You cannot vote to ban yourself.';
+      return 'Vous ne pouvez pas voter pour vous interdire.';
     }
 
     if (this.context.voteManager.hasActiveVote()) {
       const status = this.context.voteManager.getVoteStatus();
-      return `Vote already active for ${status.target}. Use !cancelVote to cancel.`;
+      return `Un vote est déjà actif pour ${status.target}. Utilisez !cancelvote pour annuler.`;
     }
 
-    const success = this.context.voteManager.startVote(targetUser, username);
+    const result = this.context.voteManager.startVote(targetUser, username);
 
-    if (!success) {
-      return `Failed to start vote for ${targetUser}.`;
+    if (!result.success) {
+      return `Impossible de démarrer le vote pour ${targetUser}.`;
     }
 
-    return `Vote started to ban ${targetUser}! Type !yes to vote for the ban (need ${this.context.config.voteThreshold} votes).`;
+    return `Vote démarré pour interdire ${targetUser} ! (${result.duration}s) Tapez !yes pour voter pour l'interdiction (besoin de ${this.context.config.voteThreshold} votes).`;
   }
 
   /**
-   * Handle !yes command
-   * Vote in favor of the ban
+   * Gérer la commande !yes
+   * Voter en faveur de l'interdiction
    */
-  handleYes(username, args) {
+  handleYes(username, args, userstate) {
     if (!this.context.voteManager.hasActiveVote()) {
-      return 'No active vote.';
+      return 'Aucun vote actif.';
     }
 
     const result = this.context.voteManager.addVote(username);
 
     if (!result.isMet) {
-      return `Vote recorded! ${result.votes}/${result.threshold} votes needed.`;
+      return `Vote enregistré ! ${result.votes}/${result.threshold} votes nécessaires.`;
     }
 
-    // Threshold met!
+    // Seuil atteint!
     const voteResult = this.context.voteManager.endVote(true);
-    const banMsg = `Chat voted to ban ${voteResult.target} for ${this.context.config.banDurationMinutes} minutes!`;
+    const targetUser = voteResult.target;
+    const banDuration = this.context.config.banDurationMinutes * 60; // Convertir en secondes
 
-    // TODO: Execute ban via Twitch API
+    // Exécuter le délai d'expiration via l'API Twitch
+    this.context.client.timeout(
+      targetUser,
+      banDuration,
+      `Le vote pour l'interdiction a réussi (${voteResult.votes} votes)`
+    );
+
+    const banMsg = `Le chat a voté pour interdire ${targetUser} pendant ${this.context.config.banDurationMinutes} minutes !`;
     logger.info(
-      `Ban executed: ${voteResult.target} by ${voteResult.initiator}`
+      `Interdiction exécutée : ${targetUser} par ${voteResult.initiator} (${voteResult.votes} votes)`
     );
 
     return banMsg;
   }
 
   /**
-   * Handle !no command
-   * Vote against the ban
+   * Gérer la commande !no
+   * Voter contre l'interdiction
    */
-  handleNo(username, args) {
+  handleNo(username, args, userstate) {
     if (!this.context.voteManager.hasActiveVote()) {
-      return 'No active vote.';
+      return 'Aucun vote actif.';
     }
 
-    // For now, !no just acknowledges the command
-    // Extended feature: could count downvotes and cancel vote if threshold is high
-    return 'Vote against ban recorded.';
+    // Pour l'instant, !no reconnaît simplement la commande
+    // Fonctionnalité étendue : pourrait compter les votes contre et annuler le vote si le seuil est élevé
+    return 'Vote contre l\'interdiction enregistré.';
   }
 
   /**
-   * Handle !votestatus command
-   * Show current vote status
+   * Gérer la commande !votestatus
+   * Afficher l'état du vote actuel
    */
-  handleVoteStatus(username, args) {
+  handleVoteStatus(username, args, userstate) {
     const status = this.context.voteManager.getVoteStatus();
 
     if (!status) {
-      return 'No active vote.';
+      return 'Aucun vote actif.';
     }
 
-    return `Vote for ${status.target}: ${status.votes}/${status.threshold} votes (${status.percentage}%)`;
+    return `Vote pour ${status.target} : ${status.votes}/${status.threshold} votes (${status.percentage}%)`;
   }
 
   /**
-   * Handle !cancelVote command
-   * Cancel current vote (moderators only)
+   * Gérer la commande !cancelvote
+   * Annuler le vote actuel (modérateurs uniquement)
    */
-  handleCancelVote(username, args) {
-    const isMod = this.isModerator(username);
+  handleCancelVote(username, args, userstate) {
+    const isMod = this.context.client.isModerator(userstate);
     if (!isMod) {
-      return 'Only moderators can cancel votes.';
+      return 'Seuls les modérateurs peuvent annuler les votes.';
     }
 
     const cancelled = this.context.voteManager.cancelVote();
 
     if (!cancelled) {
-      return 'No active vote to cancel.';
+      return 'Aucun vote actif à annuler.';
     }
 
-    return 'Vote cancelled by moderator.';
+    return 'Vote annulé par le modérateur.';
   }
 
-  /**
-   * Handle !help command
-   * Show available commands
-   */
-  handleHelp(username, args) {
-    const commands = [
-      '!votban @user - Start a vote to ban a user (mods only)',
-      '!yes - Vote for the ban',
-      '!no - Vote against the ban',
-      '!votestatus - Show current vote status',
-      '!cancelVote - Cancel current vote (mods only)',
-    ];
-
-    return `Available commands: ${commands.join(' | ')}`;
-  }
-
-  /**
-   * Check if user is a moderator
-   * TODO: Implement proper moderator check with Twitch API
-   * For now, just check against a simple list or check message tags
-   */
-  isModerator(username) {
-    // TODO: Check user badges from Twitch IRC tags
-    // For demo, allow specific users or check if bot owner
-    return (
-      username.toLowerCase() === this.context.config.channel.toLowerCase() ||
-      (this.context.config.moderators &&
-        this.context.config.moderators.includes(username.toLowerCase()))
-    );
-  }
 }
 
 module.exports = CommandHandler;

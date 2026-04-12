@@ -1,205 +1,219 @@
 /**
- * Twitch WebSocket client
- * Handles TMI (Twitch Messaging Interface) connection and IRC protocol
+ * Client de chat Twitch utilisant tmi.js
+ * Gère la connexion au chat Twitch et l'analyse des messages
  */
 
-const WebSocket = require('ws');
+const tmi = require('tmi.js');
 const logger = require('./logger');
 const { config } = require('./config');
 
 class TwitchClient {
   constructor(options = {}) {
     this.config = { ...config, ...options };
-    this.ws = null;
-    this.reconnectAttempts = 0;
+    this.client = null;
     this.connected = false;
     this.messageHandlers = [];
-    this.commandHandlers = {};
-
-    // Bind methods to preserve context
-    this.connect = this.connect.bind(this);
-    this.handleMessage = this.handleMessage.bind(this);
-    this.send = this.send.bind(this);
   }
 
   /**
-   * Connect to Twitch TMI server
+   * Se connecter au chat Twitch
    * @returns {Promise<void>}
    */
-  connect() {
-    return new Promise((resolve, reject) => {
-      logger.info(`Connecting to Twitch TMI at ${this.config.tmiServer}`);
+  async connect() {
+    try {
+      logger.info(`Connexion à Twitch en tant que ${this.config.botUsername}`);
 
-      this.ws = new WebSocket(this.config.tmiServer);
-
-      this.ws.on('open', () => {
-        logger.info('WebSocket connected, authenticating...');
-        this.authenticate();
-        resolve();
+      this.client = new tmi.client({
+        options: {
+          debug: this.config.debug,
+          messagesLogLevel: this.config.debug ? 'info' : 'warn',
+        },
+        connection: {
+          reconnect: true,
+          secure: true,
+        },
+        identity: {
+          username: this.config.botUsername,
+          password: this.config.oauthToken,
+        },
+        channels: [this.config.channel],
       });
 
-      this.ws.on('message', this.handleMessage);
+      // Enregistrer les gestionnaires d'événements
+      this.client.on('connected', this.onConnected.bind(this));
+      this.client.on('disconnected', this.onDisconnected.bind(this));
+      this.client.on('message', this.onMessage.bind(this));
+      this.client.on('messagedeleted', this.onMessageDeleted.bind(this));
+      this.client.on('timeout', this.onTimeout.bind(this));
+      this.client.on('ban', this.onBan.bind(this));
 
-      this.ws.on('error', (error) => {
-        logger.error('WebSocket error', error);
-        reject(error);
-      });
+      await this.client.connect();
+      logger.info('Demande de connexion envoyée, en attente de confirmation...');
+    } catch (error) {
+      logger.error('Erreur lors de la connexion à Twitch', error);
+      throw error;
+    }
+  }
 
-      this.ws.on('close', () => {
-        if (this.connected) {
-          logger.warn('WebSocket disconnected, attempting to reconnect...');
-          this.connected = false;
-          this.reconnect();
-        }
+  /**
+   * Gérer la connexion réussie
+   */
+  onConnected() {
+    this.connected = true;
+    logger.info(`✓ Connecté au chat Twitch en tant que ${this.config.botUsername}`);
+    logger.info(`✓ Surveillance du canal: #${this.config.channel}`);
+  }
+
+  /**
+   * Gérer la déconnexion
+   */
+  onDisconnected(reason) {
+    this.connected = false;
+    logger.warn(`Déconnecté de Twitch : ${reason}`);
+  }
+
+  /**
+   * Gérer le message de chat entrant
+   * @param {string} channel - Nom du canal
+   * @param {Object} userstate - Informations utilisateur (badges, couleur, etc.)
+   * @param {string} message - Texte du message
+   * @param {boolean} self - Si le message provient du bot lui-même
+   */
+  onMessage(channel, userstate, message, self) {
+    // Ignorer les messages du bot
+    if (self) return;
+
+    const username = userstate['display-name'] || userstate.username;
+    logger.debug(`Message du chat de ${username} : ${message}`);
+
+    // Déclencher les gestionnaires
+    this.messageHandlers.forEach((handler) => {
+      handler({
+        username,
+        message,
+        userstate,
+        isModerator: this.isModerator(userstate),
+        isBroadcaster: userstate['room-id'] === userstate['user-id'],
       });
     });
   }
 
   /**
-   * Reconnect with exponential backoff
+   * Gérer les messages supprimés
    */
-  reconnect() {
-    if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-      logger.error(
-        `Failed to reconnect after ${this.config.maxReconnectAttempts} attempts`
-      );
+  onMessageDeleted(channel, username, deletedMessage, userstate) {
+    logger.info(`Message supprimé de ${username} : ${deletedMessage}`);
+  }
+
+  /**
+   * Gérer le délai d'expiration de l'utilisateur
+   */
+  onTimeout(channel, username, reason, duration) {
+    logger.info(`${username} a un délai d'expiration de ${duration}s : ${reason}`);
+  }
+
+  /**
+   * Gérer l'interdiction d'utilisateur
+   */
+  onBan(channel, username, reason, userstate) {
+    logger.info(`${username} est interdit : ${reason}`);
+  }
+
+  /**
+   * Envoyer un message de chat
+   * @param {string} message - Message à envoyer
+   */
+  async chat(message) {
+    if (!this.connected) {
+      logger.warn('Non connecté à Twitch, impossible d\'envoyer un message');
       return;
     }
 
-    this.reconnectAttempts += 1;
-    const delay =
-      this.config.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-
-    logger.info(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
-
-    setTimeout(() => {
-      this.connect()
-        .then(() => {
-          this.reconnectAttempts = 0;
-        })
-        .catch((err) => {
-          logger.error('Reconnection failed', err);
-          this.reconnect();
-        });
-    }, delay);
-  }
-
-  /**
-   * Authenticate with Twitch
-   */
-  authenticate() {
-    this.send(`PASS ${this.config.oauthToken}`);
-    this.send(`NICK ${this.config.botUsername}`);
-    this.send(`JOIN #${this.config.channel}`);
-
-    // Request messages, room state, and other metadata
-    this.send('CAP REQ :twitch.tv/membership');
-    this.send('CAP REQ :twitch.tv/tags');
-    this.send('CAP REQ :twitch.tv/commands');
-
-    logger.info(
-      `Authenticating as ${this.config.botUsername} in #${this.config.channel}`
-    );
-  }
-
-  /**
-   * Send raw IRC message to Twitch
-   * @param {string} message - IRC message to send
-   */
-  send(message) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      logger.warn('WebSocket not ready, message not sent', message);
-      return;
+    try {
+      await this.client.say(this.config.channel, message);
+      logger.debug(`Message envoyé : ${message}`);
+    } catch (error) {
+      logger.error('Erreur lors de l\'envoi du message', error);
     }
-
-    logger.debug(`Sending: ${message}`);
-    this.ws.send(`${message}\r\n`);
   }
 
   /**
-   * Send chat message to channel
-   * @param {string} message - Chat message to send
+   * Vérifier si l'utilisateur est modérateur
+   * @param {Object} userstate - État de l'utilisateur de tmi.js
+   * @returns {boolean}
    */
-  chat(message) {
-    this.send(`PRIVMSG #${this.config.channel} :${message}`);
+  isModerator(userstate) {
+    // Vérifier les badges du modérateur ou du statut de diffuseur
+    if (!userstate.badges) return false;
+
+    const isMod = userstate.badges.moderator === '1';
+    const isBroadcaster = userstate.badges.broadcaster === '1';
+
+    return isMod || isBroadcaster;
   }
 
   /**
-   * Handle incoming IRC messages
-   * @param {Buffer} data - Raw message data
+   * Enregistrer un gestionnaire pour les messages de chat
+   * @param {Function} handler - Fonction à appeler pour chaque message
    */
-  handleMessage(data) {
-    const message = data.toString();
-    logger.debug(`Received: ${message.trim()}`);
-
-    // Split message into lines (can have multiple)
-    const lines = message.split('\r\n').filter((line) => line.length > 0);
-
-    lines.forEach((line) => {
-      // Handle PING/PONG
-      if (line.startsWith('PING')) {
-        this.send(line.replace('PING', 'PONG'));
-        logger.debug('Responded to PING with PONG');
-        return;
-      }
-
-      // Handle successful login
-      if (line.includes('001') && line.includes('Welcome')) {
-        this.connected = true;
-        logger.info('Successfully logged in to Twitch');
-        return;
-      }
-
-      // Handle chat messages (PRIVMSG)
-      if (line.includes('PRIVMSG')) {
-        const parsed = this.parseMessage(line);
-        if (parsed) {
-          logger.debug(`Chat message from ${parsed.username}: ${parsed.text}`);
-          this.messageHandlers.forEach((handler) => handler(parsed));
-        }
-        return;
-      }
-
-      // Handle other messages (NOTICE, USERNOTICE, etc.)
-      if (this.config.debug) {
-        logger.debug(`IRC message: ${line}`);
-      }
-    });
-  }
-
-  /**
-   * Parse IRC message to extract username and text
-   * @param {string} raw - Raw IRC message
-   * @returns {Object|null} { username, text } or null if not parseable
-   */
-  parseMessage(raw) {
-    // Match format: :username!user@host PRIVMSG #channel :message text
-    const match = raw.match(/:(\w+)!.*PRIVMSG #\w+ :(.+)/);
-    if (match) {
-      return {
-        username: match[1],
-        text: match[2],
-      };
-    }
-    return null;
-  }
-
-  /**
-   * Register a handler for chat messages
-   * @param {Function} handler - Function to call for each message
-   */
-  onMessage(handler) {
+  onMessageReceived(handler) {
     this.messageHandlers.push(handler);
   }
 
   /**
-   * Disconnect from Twitch
+   * Interdire un utilisateur
+   * @param {string} username - Nom d'utilisateur à interdire
+   * @param {string} reason - Raison de l'interdiction
+   * @returns {Promise<void>}
    */
-  disconnect() {
-    if (this.ws) {
-      logger.info('Disconnecting from Twitch');
-      this.ws.close();
-      this.ws = null;
+  async ban(username, reason = '') {
+    if (!this.connected) {
+      logger.warn('Non connecté, impossible d\'interdire l\'utilisateur');
+      return;
+    }
+
+    try {
+      await this.client.ban(this.config.channel, username, reason);
+      logger.info(`${username} est interdit : ${reason}`);
+    } catch (error) {
+      logger.error(`Erreur lors de l'interdiction de ${username}`, error);
+    }
+  }
+
+  /**
+   * Mettre en délai d'attente un utilisateur
+   * @param {string} username - Nom d'utilisateur à mettre en délai
+   * @param {number} duration - Durée en secondes
+   * @param {string} reason - Raison du délai d'attente
+   * @returns {Promise<void>}
+   */
+  async timeout(username, duration, reason = '') {
+    if (!this.connected) {
+      logger.warn('Non connecté, impossible de mettre l\'utilisateur en délai');
+      return;
+    }
+
+    try {
+      await this.client.timeout(
+        this.config.channel,
+        username,
+        duration,
+        reason
+      );
+      logger.info(`${username} a un délai d'expiration de ${duration}s : ${reason}`);
+    } catch (error) {
+      logger.error(`Erreur lors de la mise en délai de ${username}`, error);
+    }
+  }
+
+  /**
+   * Déconnecter de Twitch
+   */
+  async disconnect() {
+    if (this.client) {
+      logger.info('Déconnexion de Twitch');
+      await this.client.disconnect();
+      this.client = null;
       this.connected = false;
     }
   }

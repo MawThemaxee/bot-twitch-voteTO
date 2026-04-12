@@ -1,41 +1,37 @@
 /**
- * Configuration loader for Twitch bot
- * Loads environment variables with fallback defaults
+ * Chargeur de configuration pour le bot Twitch
+ * Charge les variables d'environnement avec des valeurs par défaut
  */
 
 require('dotenv').config();
 
 const config = {
-  // Twitch credentials
+  // Identifiants Twitch
   channel: process.env.TWITCH_CHANNEL || 'testchannel',
   botUsername: process.env.TWITCH_BOT_USERNAME || 'testbot',
   oauthToken: process.env.TWITCH_OAUTH_TOKEN || 'oauth:test',
 
-  // Vote configuration
+  // Configuration du vote
   voteThreshold: parseInt(process.env.VOTE_THRESHOLD || '3', 10),
   banDurationMinutes: parseInt(process.env.BAN_DURATION_MINUTES || '5', 10),
+  voteDurationSeconds: parseInt(process.env.VOTE_DURATION_SECONDS || '60', 10),
 
-  // Server configuration
-  tmiServer: 'wss://irc-ws.chat.twitch.tv:443',
-  reconnectDelay: parseInt(process.env.RECONNECT_DELAY || '3000', 10),
-  maxReconnectAttempts: parseInt(process.env.MAX_RECONNECT_ATTEMPTS || '10', 10),
-
-  // Debug mode
+  // Mode débogage
   debug: process.env.DEBUG === 'true',
 };
 
-// Validate required config
+// Valider la configuration requise
 const validateConfig = () => {
   const errors = [];
 
   if (!config.channel || config.channel === 'testchannel') {
-    errors.push('TWITCH_CHANNEL environment variable is required');
+    errors.push('La variable d\'environnement TWITCH_CHANNEL est requise');
   }
   if (!config.botUsername || config.botUsername === 'testbot') {
-    errors.push('TWITCH_BOT_USERNAME environment variable is required');
+    errors.push('La variable d\'environnement TWITCH_BOT_USERNAME est requise');
   }
   if (!config.oauthToken || config.oauthToken === 'oauth:test') {
-    errors.push('TWITCH_OAUTH_TOKEN environment variable is required');
+    errors.push('La variable d\'environnement TWITCH_OAUTH_TOKEN est requise');
   }
 
   return errors;

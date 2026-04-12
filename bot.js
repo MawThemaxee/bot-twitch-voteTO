@@ -1,6 +1,6 @@
 /**
- * Twitch Vote-to-Ban Bot Entry Point
- * Main bot logic that ties together client, vote manager, and commands
+ * Point d'entrée du bot de vote-pour-interdiction Twitch
+ * Logique bot principale qui relie le client, le gestionnaire de vote et les commandes
  */
 
 const TwitchClient = require('./src/client');
@@ -17,127 +17,128 @@ class TwitchVoteBotError extends Error {
 }
 
 /**
- * Main bot class
+ * Classe du bot principal
  */
 class TwitchVoteBot {
   constructor() {
-    // Validate configuration first
+    // Valider d'abord la configuration
     const errors = validateConfig();
     if (errors.length > 0) {
       errors.forEach((error) => logger.error(error));
-      throw new TwitchVoteBotError('Configuration validation failed');
+      throw new TwitchVoteBotError('Validation de la configuration échouée');
     }
 
-    logger.info('Initializing Twitch Vote Bot');
+    logger.info('Initialisation du bot de vote Twitch');
 
-    // Initialize components
+    // Initialiser les composants
     this.config = config;
     this.voteManager = new VoteManager(
       config.voteThreshold,
-      config.banDurationMinutes
+      config.banDurationMinutes,
+      config.voteDurationSeconds
     );
     this.client = new TwitchClient(config);
-    this.commandHandler = null; // Initialize after client is ready
+    this.commandHandler = null; // Initialiser après que le client soit prêt
   }
 
   /**
-   * Start the bot
+   * Démarrer le bot
    */
   async start() {
     try {
-      logger.info('Starting bot...');
+      logger.info('Démarrage du bot...');
 
-      // Connect to Twitch
+      // Se connecter à Twitch
       await this.client.connect();
 
-      // Initialize command handler with context
+      // Initialiser le gestionnaire de commandes avec le contexte
       this.commandHandler = new CommandHandler({
         client: this.client,
         voteManager: this.voteManager,
         config: this.config,
       });
 
-      // Register message handler
-      this.client.onMessage((parsedMessage) => {
-        this.handleChatMessage(parsedMessage);
+      // Enregistrer le gestionnaire de messages
+      this.client.onMessageReceived((messageData) => {
+        this.handleChatMessage(messageData);
       });
 
-      logger.info('Bot started successfully');
+      logger.info('Bot démarré avec succès');
     } catch (error) {
-      logger.error('Failed to start bot', error);
+      logger.error('Erreur lors du démarrage du bot', error);
       throw error;
     }
   }
 
   /**
-   * Handle incoming chat messages
-   * @param {Object} parsedMessage - { username, text }
+   * Gérer les messages de chat entrants
+   * @param {Object} messageData - { username, message, userstate, isModerator, isBroadcaster }
    */
-  handleChatMessage(parsedMessage) {
-    const { username, text } = parsedMessage;
+  handleChatMessage(messageData) {
+    const { username, message, userstate } = messageData;
 
-    // Check if message is a command
-    if (!text.startsWith('!')) {
+    // Vérifier si le message est une commande
+    if (!message.startsWith('!')) {
       return;
     }
 
-    logger.debug(`Processing potential command: ${text}`);
+    logger.debug(`Traitement de la commande potentielle : ${message}`);
 
     try {
-      const response = this.commandHandler.parse(username, text);
+      const response = this.commandHandler.parse(username, message, userstate);
 
       if (response) {
-        logger.info(`Sending response to ${username}: ${response}`);
+        logger.info(`Envoi de la réponse à ${username} : ${response}`);
         this.client.chat(response);
       }
     } catch (error) {
-      logger.error('Error handling message', error);
-      this.client.chat('An error occurred processing your command.');
+      logger.error('Erreur lors du traitement du message', error);
+      this.client.chat('Une erreur est survenue lors du traitement de votre commande.');
     }
   }
 
   /**
-   * Gracefully shutdown the bot
+   * Arrêter gracieusement le bot
    */
-  shutdown() {
-    logger.info('Shutting down bot...');
+  async shutdown() {
+    logger.info('Arrêt du bot...');
     if (this.client) {
-      this.client.disconnect();
+      await this.client.disconnect();
     }
-    logger.info('Bot shutdown complete');
+    logger.info('Bot arrêté avec succès');
   }
 }
 
 /**
- * Main entry point
+ * Point d'entrée principal
  */
 async function main() {
   try {
     const bot = new TwitchVoteBot();
     await bot.start();
 
-    // Handle graceful shutdown
-    process.on('SIGINT', () => {
-      logger.info('Received SIGINT, shutting down...');
-      bot.shutdown();
+    // Gérer l'arrêt gracieux
+    process.on('SIGINT', async () => {
+      logger.info('SIGINT reçu, arrêt en cours...');
+      await bot.shutdown();
       process.exit(0);
     });
 
-    process.on('SIGTERM', () => {
-      logger.info('Received SIGTERM, shutting down...');
-      bot.shutdown();
+    process.on('SIGTERM', async () => {
+      logger.info('SIGTERM reçu, arrêt en cours...');
+      await bot.shutdown();
       process.exit(0);
     });
   } catch (error) {
-    logger.error('Fatal error', error);
+    logger.error('Erreur fatale', error);
     process.exit(1);
   }
 }
 
-// Run if this is the main module
+// Exécuter si c'est le module principal
 if (require.main === module) {
   main().catch((error) => {
-    logger.error('Unhandled error in main', error);
+    logger.error('Erreur non gérée dans main', error);
     process.exit(1);
   });
 }

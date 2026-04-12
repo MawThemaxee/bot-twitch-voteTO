@@ -1,58 +1,61 @@
 /**
- * Vote Manager - handles vote tracking and ban logic
- * Tracks active votes and executes bans when threshold is met
+ * Gestionnaire de vote - gère le suivi des votes et la logique d'interdiction
+ * Suit les votes actifs et exécute les interdictions lorsque le seuil est atteint
  */
 
 const logger = require('./logger');
 
 class VoteManager {
-  constructor(threshold = 3, banDurationMinutes = 5) {
+  constructor(threshold = 3, banDurationMinutes = 5, voteDurationSeconds = 60) {
     this.threshold = threshold;
     this.banDurationMinutes = banDurationMinutes;
+    this.voteDurationSeconds = voteDurationSeconds;
     this.activeVote = null;
-    this.voteTimeouts = new Map(); // Track vote timeouts
+    this.voteTimeouts = new Map(); // Suivi des délais d'expiration des votes
   }
 
   /**
-   * Start a new vote for banning a user
-   * @param {string} targetUser - Username to vote on
-   * @param {string} initiator - Username who started the vote
-   * @returns {boolean} - True if vote started, false if one already active
+   * Démarrer un nouveau vote pour interdire un utilisateur
+   * @param {string} targetUser - Nom d'utilisateur sur lequel voter
+   * @param {string} initiator - Nom d'utilisateur qui a démarré le vote
+   * @returns {boolean} - True si le vote a démarré, false si un vote est déjà actif
    */
   startVote(targetUser, initiator) {
     if (this.activeVote) {
       logger.warn(
-        `Vote already active for ${this.activeVote.target}, cannot start new vote`
+        `Un vote est déjà actif pour ${this.activeVote.target}, impossible de démarrer un nouveau vote`
       );
       return false;
     }
 
+    const durationMs = this.voteDurationSeconds * 1000;
+    
     this.activeVote = {
       target: targetUser,
       initiator: initiator,
       votes: new Set(),
       startTime: Date.now(),
-      expiresAt: Date.now() + 60000, // Vote expires in 60 seconds
+      expiresAt: Date.now() + durationMs,
     };
 
-    logger.info(`Vote started for ${targetUser} by ${initiator}`);
+    logger.info(`Vote démarré pour ${targetUser} par ${initiator} (${this.voteDurationSeconds}s)`);
 
-    // Auto-expire vote after 60 seconds
+    // Fin automatique du vote après la durée définie
     const timeout = setTimeout(() => {
       logger.info(
-        `Vote for ${targetUser} expired (${this.activeVote.votes.size}/${this.threshold} votes)`
+        `Le vote pour ${targetUser} a expiré (${this.activeVote.votes.size}/${this.threshold} votes)`
       );
       this.endVote(false);
-    }, 60000);
+    }, durationMs);
 
     this.voteTimeouts.set(targetUser, timeout);
 
-    return true;
+    return { success: true, duration: this.voteDurationSeconds };
   }
 
   /**
-   * Add a vote from a user
-   * @param {string} username - Username voting
+   * Ajouter un vote d'un utilisateur
+   * @param {string} username - Nom d'utilisateur votant
    * @returns {Object} - { votes, threshold, isMet }
    */
   addVote(username) {
@@ -60,9 +63,9 @@ class VoteManager {
       return { votes: 0, threshold: this.threshold, isMet: false };
     }
 
-    // Prevent duplicate votes from same user
+    // Empêcher les votes en doublon du même utilisateur
     if (this.activeVote.votes.has(username)) {
-      logger.debug(`${username} already voted, ignoring duplicate`);
+      logger.debug(`${username} a déjà voté, doublon ignoré`);
       return {
         votes: this.activeVote.votes.size,
         threshold: this.threshold,
@@ -75,14 +78,14 @@ class VoteManager {
     const isMet = voteCount >= this.threshold;
 
     logger.info(
-      `Vote added: ${voteCount}/${this.threshold} for ${this.activeVote.target}`
+      `Vote ajouté : ${voteCount}/${this.threshold} pour ${this.activeVote.target}`
     );
 
     return { votes: voteCount, threshold: this.threshold, isMet };
   }
 
   /**
-   * Check if threshold is met
+   * Vérifier si le seuil est atteint
    * @returns {boolean}
    */
   isThresholdMet() {
@@ -91,8 +94,8 @@ class VoteManager {
   }
 
   /**
-   * Get current vote status
-   * @returns {Object|null} - Current vote info or null if no active vote
+   * Obtenir l'état du vote actuel
+   * @returns {Object|null} - Informations de vote actuelles ou null s'il n'y a pas de vote actif
    */
   getVoteStatus() {
     if (!this.activeVote) return null;
@@ -109,9 +112,9 @@ class VoteManager {
   }
 
   /**
-   * End the current vote (success or failure)
-   * @param {boolean} success - Whether vote passed
-   * @returns {Object|null} - Vote result or null
+   * Terminer le vote actuel (succès ou échec)
+   * @param {boolean} success - Si le vote a réussi
+   * @returns {Object|null} - Résultat du vote ou null
    */
   endVote(success) {
     if (!this.activeVote) return null;
@@ -122,10 +125,10 @@ class VoteManager {
       votes: this.activeVote.votes.size,
       threshold: this.threshold,
       success: success,
-      reason: success ? 'Threshold met' : 'Vote expired',
+      reason: success ? 'Seuil atteint' : 'Vote expiré',
     };
 
-    // Clear timeout
+    // Effacer le délai d'attente
     const timeout = this.voteTimeouts.get(this.activeVote.target);
     if (timeout) {
       clearTimeout(timeout);
@@ -137,13 +140,13 @@ class VoteManager {
   }
 
   /**
-   * Cancel the current vote
-   * @returns {boolean} - True if vote was cancelled
+   * Annuler le vote actuel
+   * @returns {boolean} - True si le vote a été annulé
    */
   cancelVote() {
     if (!this.activeVote) return false;
 
-    logger.info(`Vote for ${this.activeVote.target} cancelled`);
+    logger.info(`Vote pour ${this.activeVote.target} annulé`);
     const timeout = this.voteTimeouts.get(this.activeVote.target);
     if (timeout) {
       clearTimeout(timeout);
@@ -155,7 +158,7 @@ class VoteManager {
   }
 
   /**
-   * Check if a vote is currently active
+   * Vérifier si un vote est actuellement actif
    * @returns {boolean}
    */
   hasActiveVote() {

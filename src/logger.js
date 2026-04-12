@@ -1,6 +1,6 @@
 /**
- * Logger utility for Twitch bot
- * Provides INFO, WARN, ERROR logging with timestamps
+ * Utilitaire de journalisation pour le bot Twitch
+ * Fournit la journalisation INFO, WARN, ERROR avec horodatages
  */
 
 const { config } = require('./config');
@@ -17,9 +17,9 @@ const timestamp = () => new Date().toISOString();
 
 const logger = {
   /**
-   * Log info messages
+   * Enregistrer les messages d'information
    * @param {string} message
-   * @param {any} data - Optional additional data to log
+   * @param {any} data - Données supplémentaires facultatives à enregistrer
    */
   info: (message, data = null) => {
     const prefix = `${colors.cyan}[INFO]${colors.reset} ${timestamp()}`;
@@ -28,23 +28,23 @@ const logger = {
   },
 
   /**
-   * Log warning messages
+   * Enregistrer les messages d'avertissement
    * @param {string} message
-   * @param {any} data - Optional additional data to log
+   * @param {any} data - Données supplémentaires facultatives à enregistrer
    */
   warn: (message, data = null) => {
-    const prefix = `${colors.yellow}[WARN]${colors.reset} ${timestamp()}`;
+    const prefix = `${colors.yellow}[AVERTISSEMENT]${colors.reset} ${timestamp()}`;
     const msg = data ? `${message} ${JSON.stringify(data)}` : message;
     console.warn(`${prefix} ${msg}`);
   },
 
   /**
-   * Log error messages
+   * Enregistrer les messages d'erreur
    * @param {string} message
-   * @param {Error|any} error - Optional error object or additional data
+   * @param {Error|any} error - Objet erreur ou données supplémentaires
    */
   error: (message, error = null) => {
-    const prefix = `${colors.red}[ERROR]${colors.reset} ${timestamp()}`;
+    const prefix = `${colors.red}[ERREUR]${colors.reset} ${timestamp()}`;
     let errorStr = '';
     if (error) {
       if (error instanceof Error) {
@@ -60,13 +60,13 @@ const logger = {
   },
 
   /**
-   * Log debug messages (only if DEBUG=true)
+   * Enregistrer les messages de débogage (seulement si DEBUG=true)
    * @param {string} message
-   * @param {any} data - Optional additional data to log
+   * @param {any} data - Données supplémentaires facultatives à enregistrer
    */
   debug: (message, data = null) => {
     if (!config.debug) return;
-    const prefix = `${colors.green}[DEBUG]${colors.reset} ${timestamp()}`;
+    const prefix = `${colors.green}[DÉBOGAGE]${colors.reset} ${timestamp()}`;
     const msg = data ? `${message} ${JSON.stringify(data)}` : message;
     console.log(`${prefix} ${msg}`);
   },
