@@ -17,7 +17,10 @@ Un bot Twitch qui permet aux utilisateurs de voter pour des interdictions tempor
    ```
 
 ## Utilisation
-
+0. ````bash
+   cp .env.example .env
+   npm install
+   ````
 1. Créez un fichier `.env` à la racine du projet et ajoutez les variables d'environnement nécessaires (voir le fichier `.env.example` pour référence).
 2. creez un compte Twitch pour votre bot et obtenez un OAuth Token pour ce compte. Vous pouvez utiliser des outils en ligne comme [Twitch Token Generator](https://twitchtokengenerator.com/) pour générer un token avec les scopes nécessaires (généralement `chat:edit` et `chat:read`).
 3. Déployer le OAuth Token pour votre bot Twitch en utilisant le script `setup-oauth-simple.js` :
@@ -32,7 +35,7 @@ Un bot Twitch qui permet aux utilisateurs de voter pour des interdictions tempor
 6. Utilisez `!votestatus` pour afficher l'état actuel du vote.
 
 ## Dépendances
-
+- `nodejs` : Un environnement d'exécution JavaScript côté serveur version 14 ou supérieure.
 - `nodemon` : Un utilitaire qui redémarre automatiquement l'application Node quand des changements de fichiers sont détectés
 - `tmi.js` : Une bibliothèque pour interagir avec l'API de Twitch, permettant de créer des bots de chat Twitch.
 - `dotenv` : Un module sans dépendances qui charge les variables d'environnement d'un fichier .env dans process.env.
