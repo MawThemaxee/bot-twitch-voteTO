@@ -48,6 +48,8 @@ Un bot Twitch qui permet aux utilisateurs de voter pour des interdictions tempor
 5. Dans le chat de votre chaîne Twitch, utilisez la commande `!votban @nom_d'utilisateur` pour initier un vote pour interdire temporairement un utilisateur. Les autres utilisateurs peuvent voter avec `!yes` ou `!no`.
 6. Utilisez `!votestatus` pour afficher l'état actuel du vote.
 
+7. Web Overlay : Si vous avez activé le serveur web dans la configuration, vous pouvez accéder à l'overlay de vote en ouvrant `http://localhost:3000/overlay` dans votre navigateur. Vous pouvez intégrer cet overlay dans votre logiciel de streaming avec l'URL de votre machine qui sera affichée dans la console au démarrage du serveur web.
+
 ## Dépendances
 - `nodejs` : Un environnement d'exécution JavaScript côté serveur version 14 ou supérieure.
 - `nodemon` : Un utilitaire qui redémarre automatiquement l'application Node quand des changements de fichiers sont détectés
@@ -64,6 +66,11 @@ Vous pouvez configurer le bot en modifiant les variables dans votre fichier `.en
 | `TWITCH_BOT_USERNAME` | Nom d'utilisateur du bot | - (requis) |
 | `TWITCH_OAUTH_TOKEN` | Token OAuth du bot | - (requis) |
 | `TWITCH_CLIENT_ID` | Client ID Twitch | - (requis pour API Helix) |
+| `TWITCH_BROADCASTER_ID` | ID du diffuseur Twitch | - (requis pour API Helix) |
+| `TWITCH_MODERATOR_ID` | ID du modérateur Twitch | - (requis pour API Helix) |
+| `WEB_SERVER_ENABLED` | Activer le serveur web pour l'overlay (true/false) | `false` |
+| `WEB_SERVER_PORT` | Port du serveur web | `3000` |
+| `WEB_SERVER_HOST` | Hôte du serveur web | `0.0.0.0` |
 | `BAN_DURATION_MINUTES` | Durée du timeout en minutes | `5` |
 | `BAN_REASON` | Raison du timeout affichée dans Twitch | `Vote pour interdiction` |
 | `VOTE_THRESHOLD` | Nombre de votes nécessaires pour exécuter le ban | `3` |

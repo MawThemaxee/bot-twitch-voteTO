@@ -10,8 +10,10 @@ const WebSocket = require('ws');
 const logger = require('./logger');
 
 class WebServer {
-  constructor(port = 3000) {
+  constructor(enabled = true, port = 3000, host = '0.0.0.0') {
+    this.enabled = enabled;
     this.port = port;
+    this.host = host;
     this.server = null;
     this.wss = null;
     this.clients = new Set();
@@ -24,6 +26,11 @@ class WebServer {
   start() {
     return new Promise((resolve, reject) => {
       try {
+        if (!this.enabled) {
+          logger.info('Serveur web désactivé, démarrage ignoré');
+          resolve();
+          return;
+        }
         // Créer le serveur HTTP
         this.server = http.createServer((req, res) => {
           this.handleRequest(req, res);
@@ -37,7 +44,7 @@ class WebServer {
         });
 
         // Démarrer le serveur
-        this.server.listen(this.port, '0.0.0.0', () => {
+        this.server.listen(this.port, this.host, () => {
           const os = require('os');
           const interfaces = os.networkInterfaces();
           let localIP = 'localhost';

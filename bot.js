@@ -40,7 +40,11 @@ class TwitchVoteBot {
       config.voteDurationSeconds
     );
     this.client = new TwitchClient(config);
-    this.webServer = new WebServer(config.webServerPort || 3000);
+    this.webServer = new WebServer(
+      config.webServerEnabled,
+      config.webServerPort,
+      config.webServerHost
+    );
     this.commandHandler = null; // Initialiser après que le client soit prêt
   }
 

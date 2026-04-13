@@ -14,6 +14,11 @@ const config = {
   broadcasterId: process.env.TWITCH_BROADCASTER_ID || '',
   moderatorId: process.env.TWITCH_MODERATOR_ID || '',
 
+  // Configuration du serveur web pour l'overlay
+  webServerEnabled: process.env.WEB_SERVER_ENABLED === 'true',
+  webServerPort: parseInt(process.env.WEB_SERVER_PORT || '3000', 10),
+  webServerHost: process.env.WEB_SERVER_HOST || '0.0.0.0',
+
   // Configuration du vote
   voteThreshold: parseInt(process.env.VOTE_THRESHOLD || '3', 10),
   banDurationMinutes: parseInt(process.env.BAN_DURATION_MINUTES || '5', 10),
