@@ -48,7 +48,7 @@ Un bot Twitch qui permet aux utilisateurs de voter pour des interdictions tempor
 5. Dans le chat de votre chaîne Twitch, utilisez la commande `!votban @nom_d'utilisateur` pour initier un vote pour interdire temporairement un utilisateur. Les autres utilisateurs peuvent voter avec `!yes` ou `!no`.
 6. Utilisez `!votestatus` pour afficher l'état actuel du vote.
 
-7. Web Overlay : Si vous avez activé le serveur web dans la configuration, vous pouvez accéder à l'overlay de vote en ouvrant `http://localhost:3000/overlay` dans votre navigateur. Vous pouvez intégrer cet overlay dans votre logiciel de streaming avec l'URL de votre machine qui sera affichée dans la console au démarrage du serveur web.
+7. Web Overlay : Si vous avez activé le serveur web dans la configuration, vous pouvez accéder à l'overlay de vote en ouvrant `http://localhost:3000/` dans votre navigateur. Vous pouvez intégrer cet overlay dans votre logiciel de streaming avec l'URL de votre machine qui sera affichée dans la console au démarrage du serveur web.
 
 ## Dépendances
 - `nodejs` : Un environnement d'exécution JavaScript côté serveur version 14 ou supérieure.
