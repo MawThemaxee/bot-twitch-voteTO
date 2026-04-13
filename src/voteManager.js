@@ -12,6 +12,51 @@ class VoteManager {
     this.voteDurationSeconds = voteDurationSeconds;
     this.activeVote = null;
     this.voteTimeouts = new Map(); // Suivi des délais d'expiration des votes
+    this.stateChangeCallback = null; // Callback pour les changements d'état
+  }
+
+  /**
+   * Enregistrer un callback pour les changements d'état du vote
+   * @param {Function} callback - Fonction de rappel
+   */
+  onStateChange(callback) {
+    this.stateChangeCallback = callback;
+  }
+
+  /**
+   * Notifier les changements d'état
+   * @private
+   */
+  _notifyStateChange() {
+    if (this.stateChangeCallback) {
+      const state = this.getCurrentVoteState();
+      this.stateChangeCallback(state);
+    }
+  }
+
+  /**
+   * Obtenir l'état actuel du vote pour l'affichage
+   * @returns {Object} - État du vote (actif ou pas)
+   */
+  getCurrentVoteState() {
+    if (!this.activeVote) {
+      return {
+        active: false,
+        target: null,
+        votes: 0,
+        threshold: this.threshold,
+        timeLeft: 0
+      };
+    }
+
+    const timeLeft = Math.max(0, this.activeVote.expiresAt - Date.now());
+    return {
+      active: true,
+      target: this.activeVote.target,
+      votes: this.activeVote.votes.size,
+      threshold: this.threshold,
+      timeLeft: timeLeft
+    };
   }
 
   /**
@@ -42,6 +87,9 @@ class VoteManager {
     };
 
     logger.info(`Vote démarré pour ${targetUser} par ${initiator} (${this.voteDurationSeconds}s)`);
+
+    // Notifier du changement d'état
+    this._notifyStateChange();
 
     // Fin automatique du vote après la durée définie
     const timeout = setTimeout(() => {
@@ -83,6 +131,9 @@ class VoteManager {
     logger.info(
       `Vote ajouté : ${voteCount}/${this.threshold} pour ${this.activeVote.target}`
     );
+
+    // Notifier du changement d'état
+    this._notifyStateChange();
 
     return { votes: voteCount, threshold: this.threshold, isMet };
   }
@@ -139,6 +190,10 @@ class VoteManager {
     }
 
     this.activeVote = null;
+
+    // Notifier du changement d'état
+    this._notifyStateChange();
+
     return result;
   }
 
@@ -157,6 +212,10 @@ class VoteManager {
     }
 
     this.activeVote = null;
+
+    // Notifier du changement d'état
+    this._notifyStateChange();
+
     return true;
   }
 

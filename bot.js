@@ -6,6 +6,7 @@
 const TwitchClient = require('./src/client');
 const CommandHandler = require('./src/commands');
 const VoteManager = require('./src/voteManager');
+const WebServer = require('./src/webServer');
 const logger = require('./src/logger');
 const { config, validateConfig } = require('./src/config');
 const idFetcher = require('./src/idFetcher');
@@ -39,6 +40,7 @@ class TwitchVoteBot {
       config.voteDurationSeconds
     );
     this.client = new TwitchClient(config);
+    this.webServer = new WebServer(config.webServerPort || 3000);
     this.commandHandler = null; // Initialiser après que le client soit prêt
   }
 
@@ -62,6 +64,9 @@ class TwitchVoteBot {
         logger.warn('⚠ IDs non disponibles - Certaines fonctionnalités peuvent ne pas fonctionner');
       }
 
+      // Démarrer le serveur web pour l'overlay
+      await this.webServer.start();
+
       // Se connecter à Twitch
       await this.client.connect();
 
@@ -70,6 +75,11 @@ class TwitchVoteBot {
         client: this.client,
         voteManager: this.voteManager,
         config: this.config,
+      });
+
+      // Enregistrer le callback de changement d'état du vote
+      this.voteManager.onStateChange((voteState) => {
+        this.webServer.broadcastVoteState(voteState);
       });
 
       // Enregistrer le gestionnaire de messages
@@ -116,6 +126,9 @@ class TwitchVoteBot {
    */
   async shutdown() {
     logger.info('Arrêt du bot...');
+    if (this.webServer) {
+      await this.webServer.stop();
+    }
     if (this.client) {
       await this.client.disconnect();
     }

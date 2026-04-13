@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vote Ban - Overlay Twitch</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div id="container">
+        <!-- État: Vote actif -->
+        <div id="activeVote" class="state">
+            <div class="vote-header">
+            </div>
+
+            <div class="vote-content">
+
+                <div class="vote-info">
+                    <div class="target-section">
+                        <p class="label">Joueur visé</p>
+                        <p id="targetName" class="target-name">-</p>
+                    </div>
+                    
+                    <div class="timer-section">
+                        <p class="label">Temps restant</p>
+                        <p id="timeLeft" class="timer">00:00</p>
+                    </div>
+                </div>
+
+                <div class="progress-section">
+                    <div class="progress-info">
+                        <span id="voteCount" class="vote-count">0</span>
+                        <span class="separator">/</span>
+                        <span id="voteThreshold" class="vote-threshold">0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+
+    <script src="/script.js"></script>
+</body>
+</html>

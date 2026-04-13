@@ -1,0 +1,276 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: transparent;
+    color: #fff;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+#container {
+    width: 100%;
+    height: 65vh;
+    margin: 0 auto;
+    position: relative;
+    margin-top: 15vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.state {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+.state.active {
+    display: flex;
+    opacity: 1;
+}
+
+/* État : Aucun vote */
+#noVote {
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    flex-direction: column;
+}
+
+@keyframes fadeInOut {
+    0%, 100% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+}
+
+/* État : Vote actif */
+#activeVote {
+    align-items: center;
+    justify-content: center;
+    animation: slideIn 0.2s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.vote-header {
+    position: absolute;
+    top: -1.8em;
+    display: flex;
+    align-items: center;
+}
+
+.status-badge {
+    background: transparent;
+    color: white;
+    border-radius: 2em;
+    font-weight: bold;
+    letter-spacing: 1px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+.vote-content {
+    display: block;
+    gap: 5px;
+    width: 100%;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.vote-info {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Section : Joueur visé */
+.target-section {
+    text-align: center;
+    width: 100%;
+}
+
+.target-section .label {
+    font-size: 0.5rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#targetName {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #9dfff2;
+    text-shadow: 0 0 20px rgba(27, 74, 146, 0.5);
+}
+
+/* Section : Barre de progression */
+.progress-section {
+    width: 100%;
+}
+
+.progress-info {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+#voteCount {
+    color: #6a2492a1;
+    text-shadow: 0 0 10px rgba(87, 6, 119, 0.5);
+}
+
+.separator {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+#voteThreshold {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.progress-bar {
+    width: 100%;
+    height: 30px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 15px;
+    overflow: hidden;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+}
+
+#progressFill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #6a2492a1 0%, #9dfff2 100%);
+    transition: width 0.3s ease;
+    box-shadow: 0 0 20px rgba(87, 6, 119, 0.8);
+    position: relative;
+}
+
+#progressFill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+/* Section : Durée */
+.timer-section {
+    text-align: center;
+    width: 100%;
+}
+
+.timer-section .label {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#timeLeft {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #ff9900;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .vote-content {
+        max-width: 500px;
+        gap: 30px;
+        padding: 30px;
+    }
+
+    #targetName {
+        font-size: 2.5rem;
+    }
+
+    .progress-info {
+        font-size: 1.5rem;
+    }
+
+    #timeLeft {
+        font-size: 1.5rem;
+    }
+
+    .status-badge {
+        font-size: 1rem;
+        padding: 10px 20px;
+    }
+}
+
+@media (max-width: 768px) {
+    .vote-content {
+        max-width: 90%;
+        gap: 25px;
+        padding: 20px;
+    }
+
+    #targetName {
+        font-size: 2rem;
+    }
+
+    .progress-info {
+        font-size: 1.3rem;
+    }
+
+    #timeLeft {
+        font-size: 1.3rem;
+    }
+
+    .status-badge {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+    }
+}
