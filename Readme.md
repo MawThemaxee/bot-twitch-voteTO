@@ -36,7 +36,7 @@ Un bot Twitch qui permet aux utilisateurs de voter pour des interdictions tempor
 
 3. Créez un compte Twitch pour votre bot et obtenez un OAuth Token pour ce compte. Vous pouvez utiliser des outils en ligne comme [Twitch Token Generator](https://twitchtokengenerator.com/) pour générer un token avec les scopes nécessaires.
    
-   **Scopes requis** : `chat:read`, `chat:edit`, `channel:moderate`
+   **Scopes requis** : `chat:read`, `chat:edit`, `moderator:manage:banned_users`
 
 4. Démarrez le bot en mode développement (avec redémarrage automatique) :
    ```bash
